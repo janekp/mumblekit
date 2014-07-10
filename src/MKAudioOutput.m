@@ -190,7 +190,7 @@
         for (MKAudioOutputUser *ou in mix) {
             const float * restrict userBuffer = [ou buffer];
             for (s = 0; s < nchan; ++s) {
-                const float str = _speakerVolume[s];
+                const float str = _speakerVolume[s] * _settings.volume;
                 float * restrict o = (float *)mixBuffer + s;
                 for (i = 0; i < nsamp; ++i) {
                     o[i*nchan] += userBuffer[i] * str;
