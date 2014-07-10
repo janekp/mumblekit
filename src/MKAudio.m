@@ -408,6 +408,11 @@ static void MKAudio_UpdateAudioSessionSettings(MKAudio *audio) {
 
 - (void) addFrameToBufferWithSession:(NSUInteger)session data:(NSData *)data sequence:(NSUInteger)seq type:(MKUDPMessageType)msgType {
     @synchronized(self) {
+        if([(NSObject *)_delegate respondsToSelector:@selector(audioShouldBeIgnored: forSession:)] &&
+           [_delegate audioShouldBeIgnored:self forSession:session]) {
+            return;
+        }
+        
         [_audioOutput addFrameToBufferWithSession:session data:data sequence:seq type:msgType];
     }
 }

@@ -119,6 +119,12 @@ typedef struct _MKAudioSettings {
 ///
 /// @param audio  The MKAudio singleton instance.
 - (BOOL) audioShouldBeRunning:(MKAudio *)audio;
+
+/// Called to check if an audio packet should be dropped or not
+/// @param audio  The MKAudio singleton instance.
+/// @param session The MKUser session
+- (BOOL)audioShouldBeIgnored:(MKAudio *)audio forSession:(NSUInteger)session;
+
 @end
 
 /// @class MKAudio MKAudio.h MumbleKit/MKAudio.h
