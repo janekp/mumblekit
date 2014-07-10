@@ -401,6 +401,7 @@ static void MKAudio_UpdateAudioSessionSettings(MKAudio *audio) {
         [_audioDevice setupDevice];
         _audioInput = [[MKAudioInput alloc] initWithDevice:_audioDevice andSettings:&_audioSettings];
         [_audioInput setMainConnectionForAudio:_connection];
+        [_audioInput setEnabled:[self _audioShouldBeRecording]];
         _audioOutput = [[MKAudioOutput alloc] initWithDevice:_audioDevice andSettings:&_audioSettings];
         if (_audioSettings.enableSideTone) {
             _sidetoneOutput = [[MKAudioOutputSidetone alloc] initWithSettings:&_audioSettings];
@@ -421,6 +422,8 @@ static void MKAudio_UpdateAudioSessionSettings(MKAudio *audio) {
 - (void) reinput {
     OSStatus err;
     UInt32 val = 1, valSize;
+    
+    [_audioInput setEnabled:[self _audioShouldBeRecording]];
     
     // To be able to select the correct category, we must query whethe audio input is available.
     valSize = sizeof(UInt32);

@@ -12,6 +12,7 @@
 - (void) dealloc;
 
 - (void) setMainConnectionForAudio:(MKConnection *)conn;
+- (void) setEnabled:(BOOL)enabled;
 
 - (void) initializeMixer;
 

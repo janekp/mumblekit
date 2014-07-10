@@ -57,6 +57,7 @@
     BOOL                   _doTransmit;
     BOOL                   _forceTransmit;
     BOOL                   _lastTransmit;
+    BOOL                   _enabled;
 
     signed long            _preprocRunningAvg;
     signed long            _preprocAvgItems;
@@ -165,12 +166,7 @@
     numMicChannels = [_device numberOfInputChannels];
     
     [self initializeMixer];
- 
-    [_device setupInput:^BOOL(short *frames, unsigned int nsamp) {
-        [self addMicrophoneDataWithBuffer:frames amount:nsamp];
-        return YES;
-    }];
-
+    
     return self;
 }
 
@@ -204,6 +200,21 @@
 - (void) setMainConnectionForAudio:(MKConnection *)conn {
     @synchronized(self) {
         _connection = conn;
+    }
+}
+
+- (void) setEnabled:(BOOL)enabled {
+    if(_enabled != enabled) {
+        _enabled = enabled;
+        
+        if(_enabled) {
+            [_device setupInput:^BOOL(short *frames, unsigned int nsamp) {
+                [self addMicrophoneDataWithBuffer:frames amount:nsamp];
+                return YES;
+            }];
+        } else {
+            [_device setupInput:NULL];
+        }
     }
 }
 

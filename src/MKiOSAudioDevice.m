@@ -135,7 +135,7 @@ static OSStatus outputCallback(void *udata, AudioUnitRenderActionFlags *flags, c
         return NO;
     }
         
-    val = 1;
+    val = (_inputFunc) ? 1 : 0;
     err = AudioUnitSetProperty(_audioUnit, kAudioOutputUnitProperty_EnableIO, kAudioUnitScope_Input, 1, &val, sizeof(UInt32));
     if (err != noErr) {
         NSLog(@"MKiOSAudioDevice: Unable to configure input scope on AudioUnit.");
@@ -237,8 +237,10 @@ static OSStatus outputCallback(void *udata, AudioUnitRenderActionFlags *flags, c
     }
     
     AudioBuffer *b = _buflist.mBuffers;
-    if (b && b->mData)
+    if (b && b->mData) {
         free(b->mData);
+        b->mData = NULL;
+    }
     
     NSLog(@"MKiOSAudioDevice: teardown finished.");
     return YES;
@@ -249,7 +251,14 @@ static OSStatus outputCallback(void *udata, AudioUnitRenderActionFlags *flags, c
 }
 
 - (void) setupInput:(MKAudioDeviceInputFunc)inf {
+    BOOL _inf = (_inputFunc) ? YES : NO;
+    
     _inputFunc = [inf copy];
+    
+    if((!_inf && inf) || (_inf && !inf)) {
+        [self teardownDevice];
+        [self setupDevice];
+    }
 }
 
 - (int) inputSampleRate {
