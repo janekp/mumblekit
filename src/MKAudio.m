@@ -39,7 +39,10 @@ NSString *MKAudioDidRestartNotification = @"MKAudioDidRestartNotification";
     BOOL                     _running;
 }
 - (BOOL) _audioShouldBeRunning;
+- (BOOL) _audioShouldBeRecording;
 @end
+
+static BOOL gMKAudioRecordByDefault = YES;
 
 #if TARGET_OS_IPHONE == 1
 static void MKAudio_InterruptCallback(void *udata, UInt32 interrupt) {
@@ -64,10 +67,10 @@ static void MKAudio_AudioInputAvailableCallback(MKAudio *audio, AudioSessionProp
     BOOL audioInputAvailable;
     UInt32 val;
     OSStatus err;
-
+    
     if (avail) {
         audioInputAvailable = *avail;
-        val = audioInputAvailable ? kAudioSessionCategory_PlayAndRecord : kAudioSessionCategory_MediaPlayback;
+        val = (audioInputAvailable && [audio _audioShouldBeRecording]) ? kAudioSessionCategory_PlayAndRecord : kAudioSessionCategory_MediaPlayback;
         err = AudioSessionSetProperty(kAudioSessionProperty_AudioCategory, sizeof(val), &val);
         if (err != kAudioSessionNoError) {
             NSLog(@"MKAudio: unable to set AudioCategory property.");
@@ -170,8 +173,9 @@ static void MKAudio_SetupAudioSession(MKAudio *audio) {
     }
     
     // Set the correct category for our Audio Session depending on our current audio input situation.
-    audioInputAvailable = (BOOL) val;
-    val = audioInputAvailable ? kAudioSessionCategory_PlayAndRecord : kAudioSessionCategory_MediaPlayback;
+    audioInputAvailable = (gMKAudioRecordByDefault) ? (BOOL) val : NO;
+    
+    val = (audioInputAvailable) ? kAudioSessionCategory_PlayAndRecord : kAudioSessionCategory_MediaPlayback;
     err = AudioSessionSetProperty(kAudioSessionProperty_AudioCategory, sizeof(val), &val);
     if (err != kAudioSessionNoError) {
         NSLog(@"MKAudio: unable to set AudioCategory property.");
@@ -233,7 +237,6 @@ static void MKAudio_UpdateAudioSessionSettings(MKAudio *audio) {
     UInt32 val, valSize;
     BOOL audioInputAvailable = YES;
     
-
     // To be able to select the correct category, we must query whethe audio input is available.
     valSize = sizeof(UInt32);
     err = AudioSessionGetProperty(kAudioSessionProperty_AudioInputAvailable, &valSize, &val);
@@ -241,7 +244,7 @@ static void MKAudio_UpdateAudioSessionSettings(MKAudio *audio) {
         NSLog(@"MKAudio: unable to query for input availability.");
         return;
     }
-    audioInputAvailable = (BOOL) val;
+    audioInputAvailable = ([audio _audioShouldBeRecording]) ? (BOOL) val : NO;
     
     if (audioInputAvailable) {
         // The OverrideCategoryDefaultToSpeaker property makes us output to the speakers of the iOS device
@@ -280,8 +283,13 @@ static void MKAudio_UpdateAudioSessionSettings(MKAudio *audio) {
         audio = [[MKAudio alloc] init];
         MKAudio_SetupAudioSession(audio);
     });
-
+    
     return audio;
+}
+
++ (void)setRecordByDefault:(BOOL)flag
+{
+    gMKAudioRecordByDefault = flag;
 }
 
 - (void) setDelegate:(id<MKAudioDelegate>)delegate {
@@ -313,6 +321,19 @@ static void MKAudio_UpdateAudioSessionSettings(MKAudio *audio) {
     @synchronized(self) {
         memcpy(&_audioSettings, settings, sizeof(MKAudioSettings));
     }
+}
+
+- (BOOL) _audioShouldBeRecording {
+    id<MKAudioDelegate> delegate;
+    @synchronized(self) {
+        delegate = _delegate;
+    }
+    
+    if(!delegate || ![(id)delegate respondsToSelector:@selector(audioShouldRecord:)]) {
+        return gMKAudioRecordByDefault;
+    }
+    
+    return [delegate audioShouldRecord:self];
 }
 
 // Should audio be running?
@@ -395,6 +416,22 @@ static void MKAudio_UpdateAudioSessionSettings(MKAudio *audio) {
     [self start];
     
     [[NSNotificationCenter defaultCenter] postNotificationName:MKAudioDidRestartNotification object:self];
+}
+
+- (void) reinput {
+    OSStatus err;
+    UInt32 val = 1, valSize;
+    
+    // To be able to select the correct category, we must query whethe audio input is available.
+    valSize = sizeof(UInt32);
+    err = AudioSessionGetProperty(kAudioSessionProperty_AudioInputAvailable, &valSize, &val);
+    if (err != kAudioSessionNoError || valSize != sizeof(UInt32)) {
+        NSLog(@"MKAudio: unable to query for input availability.");
+        return;
+    }
+    
+    uint32_t val32 = val;
+    MKAudio_AudioInputAvailableCallback(self, kAudioSessionProperty_AudioInputAvailable, valSize, &val32);
 }
 
 - (void) setMainConnectionForAudio:(MKConnection *)conn {

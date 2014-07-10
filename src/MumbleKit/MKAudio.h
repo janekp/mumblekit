@@ -120,10 +120,16 @@ typedef struct _MKAudioSettings {
 /// @param audio  The MKAudio singleton instance.
 - (BOOL) audioShouldBeRunning:(MKAudio *)audio;
 
-/// Called to check if an audio packet should be dropped or not
+/// Called to check if an audio packet should be dropped or not.
 /// @param audio  The MKAudio singleton instance.
 /// @param session The MKUser session
 - (BOOL)audioShouldBeIgnored:(MKAudio *)audio forSession:(NSUInteger)session;
+
+/// Called to check if the microphone should be enabled or not.
+/// Useful with push-to-talk, background audio and to privacy/permission warnings
+// (like iOS wanting access to the microphone and showing (Recording...) in the status-bar
+/// @param audio  The MKAudio singleton instance.
+- (BOOL)audioShouldRecord:(MKAudio *)audio;
 
 @end
 
@@ -140,6 +146,8 @@ typedef struct _MKAudioSettings {
 ///
 /// @return Retruns the shared MKAudio object.
 + (MKAudio *) sharedAudio;
+
++ (void)setRecordByDefault:(BOOL)flag;
 
 ///------------------------------------
 /// @name Delegate
@@ -166,6 +174,9 @@ typedef struct _MKAudioSettings {
 
 /// Restarts MumbleKit's audio subsystem.
 - (void) restart;
+
+/// Recheck for input devices
+- (void) reinput;
 
 ///---------------
 /// @name Settings
